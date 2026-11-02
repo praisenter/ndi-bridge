@@ -22,8 +22,8 @@ jobs:
       - name: Set up Java and publishing credentials
         uses: actions/setup-java@v6
         with:
-          distribution: temurin
-          java-version: '25'
+          distribution: zulu
+          java-version: 25
           cache: maven
           server-id: central
           server-username-env-var: CENTRAL_USERNAME
