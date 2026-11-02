@@ -1,0 +1,43 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Maven Central
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_USERNAME: ${{ secrets.nexus_username }}
+      CENTRAL_PASSWORD: ${{ secrets.nexus_password }}
+      GPG_PASSPHRASE: ${{ secrets.gpg_passphrase }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Java and publishing credentials
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          server-id: central
+          server-username-env-var: CENTRAL_USERNAME
+          server-password-env-var: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.gpg_private_key }}
+          gpg-passphrase-env-var: GPG_PASSPHRASE
+      - name: Check tag matches Maven version
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pom_version="$(mvn -B -ntp -q -DforceStdout help:evaluate -Dexpression=project.version)"
+          if [[ "$tag_version" != "$pom_version" ]]; then
+            echo "Release tag v$tag_version does not match POM version $pom_version" >&2
+            exit 1
+          fi
+      - name: Sign, validate, and publish
+        run: mvn -B -ntp -Prelease clean deploy
